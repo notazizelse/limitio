@@ -20,7 +20,7 @@ public partial class PasswordPromptWindow : Window
 
     private async void UnlockButton_Click(object sender, RoutedEventArgs e) => await TryUnlockAsync();
 
-    private async void PasswordBox_KeyDown(object sender, KeyEventArgs e)
+    private async void PasswordBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
