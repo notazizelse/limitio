@@ -23,7 +23,12 @@ public sealed class UsageStore : IDisposable
             Directory.CreateDirectory(directory);
         }
 
-        _connection = new SqliteConnection($"Data Source={dbPath}");
+        // Pooling=False: without this, Microsoft.Data.Sqlite keeps the native file handle alive in a
+        // pool even after Dispose() returns, so a directory delete (or reinstall) racing right behind a
+        // Dispose can hit a sharing violation on Windows (Linux doesn't enforce this the same way, which
+        // is why this only surfaced on a real Windows CI run). A single long-lived connection per process
+        // never benefited from pooling anyway, so this only removes a footgun, not a real optimization.
+        _connection = new SqliteConnection($"Data Source={dbPath};Pooling=False");
         _connection.Open();
         EnsureSchema();
     }
