@@ -4,6 +4,15 @@ on:
   push:
     tags:
       - 'v*'
+  # Lets a maintainer cut a release by hand (e.g. from the Actions tab, or via the API) without first
+  # pushing a tag - useful in environments where pushing tags is restricted. tag_name is set explicitly
+  # below so this always produces a proper "vX.Y.Z" release/tag regardless of which trigger fired it.
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 0.1.0 (no "v" prefix)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -19,12 +28,15 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Determine version from tag
+      - name: Determine version
         id: version
         shell: pwsh
         run: |
-          $tag = "${{ github.ref_name }}"
-          $version = $tag.TrimStart('v')
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ inputs.version }}".TrimStart('v')
+          } else {
+            $version = "${{ github.ref_name }}".TrimStart('v')
+          }
           "version=$version" >> $env:GITHUB_OUTPUT
 
       - name: Restore
@@ -65,6 +77,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.version }}
           files: installer/Output/LimitIO-Setup-*.exe
           generate_release_notes: true
           fail_on_unmatched_files: true
