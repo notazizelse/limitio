@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Threading;
 using LimitIO.Core.Ipc;
 using LimitIO.UI.Diagnostics;
+using LimitIO.UI.Interop;
 using LimitIO.UI.Ipc;
 
 namespace LimitIO.UI.Views;
@@ -41,7 +42,11 @@ public partial class SettingsWindow : Window
         _refreshTimer.Start();
         Closed += (_, _) => _refreshTimer.Stop();
 
-        Loaded += (_, _) => UiSafe.Run(RefreshAsync);
+        Loaded += (_, _) =>
+        {
+            WindowActivator.ForceToForeground(this);
+            UiSafe.Run(RefreshAsync);
+        };
     }
 
     private async Task RefreshAsync()

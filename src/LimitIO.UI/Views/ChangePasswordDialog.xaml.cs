@@ -1,4 +1,5 @@
 using System.Windows;
+using LimitIO.UI.Interop;
 using LimitIO.UI.Ipc;
 
 namespace LimitIO.UI.Views;
@@ -17,6 +18,11 @@ public partial class ChangePasswordDialog : Window
         _client = client;
         _sessionToken = sessionToken;
         InitializeComponent();
+        Loaded += (_, _) =>
+        {
+            WindowActivator.ForceToForeground(this);
+            OldPasswordBox.Focus();
+        };
     }
 
     private async void SaveButton_Click(object sender, RoutedEventArgs e)

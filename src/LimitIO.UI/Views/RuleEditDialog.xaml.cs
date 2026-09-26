@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using LimitIO.Core.Ipc;
+using LimitIO.UI.Interop;
 
 namespace LimitIO.UI.Views;
 
@@ -27,6 +28,12 @@ public partial class RuleEditDialog : Window
 
         TargetTypeCombo.SelectionChanged += (_, _) => UpdateTargetLabel();
         UpdateTargetLabel();
+
+        Loaded += (_, _) =>
+        {
+            WindowActivator.ForceToForeground(this);
+            TargetBox.Focus();
+        };
     }
 
     private void UpdateTargetLabel()

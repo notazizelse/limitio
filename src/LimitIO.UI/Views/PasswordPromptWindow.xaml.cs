@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using LimitIO.UI.Interop;
 using LimitIO.UI.Ipc;
 
 namespace LimitIO.UI.Views;
@@ -16,7 +17,11 @@ public partial class PasswordPromptWindow : Window
     {
         _client = client;
         InitializeComponent();
-        Loaded += (_, _) => PasswordBox.Focus();
+        Loaded += (_, _) =>
+        {
+            WindowActivator.ForceToForeground(this);
+            PasswordBox.Focus();
+        };
     }
 
     private async void UnlockButton_Click(object sender, RoutedEventArgs e) => await TryUnlockAsync();
