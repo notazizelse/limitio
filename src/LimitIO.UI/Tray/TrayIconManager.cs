@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using LimitIO.Core.Ipc;
+using LimitIO.UI.Diagnostics;
 using LimitIO.UI.Ipc;
 using LimitIO.UI.Views;
 using Application = System.Windows.Application;
@@ -29,7 +30,7 @@ public sealed class TrayIconManager : IDisposable
         _menu = new System.Windows.Forms.ContextMenuStrip();
 
         var openItem = new ToolStripMenuItem("Open LimitIO...");
-        openItem.Click += async (_, _) => await OpenSettingsAsync().ConfigureAwait(true);
+        openItem.Click += (_, _) => UiSafe.Run(OpenSettingsAsync);
         _menu.Items.Add(openItem);
 
         _ignoreSubmenu = new ToolStripMenuItem("Ignore limit for 1 minute");
@@ -41,7 +42,7 @@ public sealed class TrayIconManager : IDisposable
         aboutItem.Click += (_, _) => ShowAbout();
         _menu.Items.Add(aboutItem);
 
-        _menu.Opening += async (_, _) => await RefreshIgnoreSubmenuAsync().ConfigureAwait(true);
+        _menu.Opening += (_, _) => UiSafe.Run(RefreshIgnoreSubmenuAsync);
 
         _notifyIcon = new NotifyIcon
         {
@@ -50,11 +51,21 @@ public sealed class TrayIconManager : IDisposable
             Text = "LimitIO",
             ContextMenuStrip = _menu,
         };
-        _notifyIcon.DoubleClick += async (_, _) => await OpenSettingsAsync().ConfigureAwait(true);
+        _notifyIcon.DoubleClick += (_, _) => UiSafe.Run(OpenSettingsAsync);
     }
 
     private async Task RefreshIgnoreSubmenuAsync()
     {
+        // ToolStripItemCollection.Clear() only removes items from the collection - it does not Dispose()
+        // them, so the native GDI/USER handles each ToolStripMenuItem holds leak on every single menu
+        // open unless disposed explicitly here first. Left unfixed, this leaks a little on every tray
+        // icon click (even when there's nothing to show) and, over enough uses, exhausts the process's
+        // handle quota - which is exactly what "the app eventually becomes unresponsive and gets closed"
+        // looks like from the outside.
+        foreach (ToolStripItem item in _ignoreSubmenu.DropDownItems)
+        {
+            item.Dispose();
+        }
         _ignoreSubmenu.DropDownItems.Clear();
 
         var status = await _client.GetStatusAsync().ConfigureAwait(true);
@@ -71,7 +82,7 @@ public sealed class TrayIconManager : IDisposable
         foreach (var rule in blockedRules)
         {
             var item = new ToolStripMenuItem(rule.Target);
-            item.Click += async (_, _) =>
+            item.Click += (_, _) => UiSafe.Run(async () =>
             {
                 var result = await _client.RequestGraceAsync(rule.Id).ConfigureAwait(true);
                 if (!result.Success)
@@ -79,7 +90,7 @@ public sealed class TrayIconManager : IDisposable
                     System.Windows.MessageBox.Show(result.Reason ?? "Couldn't grant the one-minute ignore.",
                         "LimitIO", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
                 }
-            };
+            });
             _ignoreSubmenu.DropDownItems.Add(item);
         }
     }

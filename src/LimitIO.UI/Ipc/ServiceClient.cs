@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using LimitIO.Core.Ipc;
+using LimitIO.UI.Diagnostics;
 
 namespace LimitIO.UI.Ipc;
 
@@ -14,6 +15,13 @@ namespace LimitIO.UI.Ipc;
 /// </summary>
 public sealed class ServiceClient : IAsyncDisposable
 {
+    // Every IPC round-trip is capped at this - without a ceiling, a single hung read (the Service is
+    // stuck, or the pipe silently died in a way that doesn't throw) would wait forever while holding the
+    // one-at-a-time lock below, which would then jam every future call from anywhere in the UI - the
+    // tray menu, the periodic refresh timer, every button - permanently, with no way to recover short of
+    // restarting the app. A firm timeout turns that into "this one call fails, everything else keeps working."
+    private static readonly TimeSpan CallTimeout = TimeSpan.FromSeconds(8);
+
     private readonly SemaphoreSlim _lock = new(1, 1);
     private NamedPipeClientStream? _pipe;
 
@@ -71,10 +79,17 @@ public sealed class ServiceClient : IAsyncDisposable
 
     private async Task<IpcResponse> SendAsync(IpcRequestType type, object? payload, string? sessionToken, CancellationToken ct)
     {
-        await _lock.WaitAsync(ct).ConfigureAwait(false);
+        using var timeoutCts = new CancellationTokenSource(CallTimeout);
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+        var linkedCt = linkedCts.Token;
+
+        var lockAcquired = false;
         try
         {
-            await EnsureConnectedAsync(ct).ConfigureAwait(false);
+            await _lock.WaitAsync(linkedCt).ConfigureAwait(false);
+            lockAcquired = true;
+
+            await EnsureConnectedAsync(linkedCt).ConfigureAwait(false);
 
             var request = new IpcRequest
             {
@@ -85,8 +100,8 @@ public sealed class ServiceClient : IAsyncDisposable
                 PayloadJson = payload is null ? null : JsonSerializer.Serialize(payload, IpcJson.Options),
             };
 
-            await PipeMessageTransport.WriteMessageAsync(_pipe!, request, ct).ConfigureAwait(false);
-            var response = await PipeMessageTransport.ReadMessageAsync<IpcResponse>(_pipe!, ct).ConfigureAwait(false);
+            await PipeMessageTransport.WriteMessageAsync(_pipe!, request, linkedCt).ConfigureAwait(false);
+            var response = await PipeMessageTransport.ReadMessageAsync<IpcResponse>(_pipe!, linkedCt).ConfigureAwait(false);
 
             if (response is null)
             {
@@ -96,14 +111,30 @@ public sealed class ServiceClient : IAsyncDisposable
 
             return response;
         }
-        catch (Exception ex) when (ex is IOException or TimeoutException)
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
         {
+            // Our own timeout fired, not the caller's token - drop whatever connection state might be
+            // mid-read so the *next* call starts clean instead of inheriting a half-read stream.
+            DropConnection();
+            return IpcResponse.Failure(Guid.Empty, "The LimitIO service didn't respond in time. It may be busy or restarting - try again in a moment.");
+        }
+        catch (Exception ex)
+        {
+            // Deliberately broad: anything unexpected here (a malformed response, a pipe torn down
+            // mid-read, an ObjectDisposedException from a race with DisposeAsync) must never propagate
+            // out of this method - it would otherwise surface as an unhandled exception in whatever
+            // fire-and-forget UI event handler called in, which is exactly how a single bad round-trip
+            // used to take down the whole app.
+            UiLog.Error($"IPC call {type} failed", ex);
             DropConnection();
             return IpcResponse.Failure(Guid.Empty, "Couldn't reach the LimitIO service. It may not be running - try reinstalling LimitIO.");
         }
         finally
         {
-            _lock.Release();
+            if (lockAcquired)
+            {
+                _lock.Release();
+            }
         }
     }
 

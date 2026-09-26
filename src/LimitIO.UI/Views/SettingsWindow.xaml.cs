@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 using LimitIO.Core.Ipc;
+using LimitIO.UI.Diagnostics;
 using LimitIO.UI.Ipc;
 
 namespace LimitIO.UI.Views;
@@ -26,6 +27,7 @@ public partial class SettingsWindow : Window
     private readonly string _sessionToken;
     private readonly ObservableCollection<RuleRow> _rows = [];
     private readonly DispatcherTimer _refreshTimer;
+    private bool _refreshInProgress;
 
     public SettingsWindow(ServiceClient client, string sessionToken)
     {
@@ -35,20 +37,49 @@ public partial class SettingsWindow : Window
         RulesGrid.ItemsSource = _rows;
 
         _refreshTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
-        _refreshTimer.Tick += async (_, _) => await RefreshAsync();
+        _refreshTimer.Tick += (_, _) => UiSafe.Run(RefreshAsync);
         _refreshTimer.Start();
         Closed += (_, _) => _refreshTimer.Stop();
 
-        Loaded += async (_, _) => await RefreshAsync();
+        Loaded += (_, _) => UiSafe.Run(RefreshAsync);
     }
 
     private async Task RefreshAsync()
     {
-        var status = await _client.GetStatusAsync();
-        if (status is null)
+        // The IPC round-trip can now take up to 8 seconds (ServiceClient's own timeout) before failing,
+        // which is longer than this timer's 3-second interval - without this guard, a slow tick and the
+        // next one could both be mid-flight at once, both clearing and repopulating _rows independently
+        // and fighting each other for what the grid shows.
+        if (_refreshInProgress)
         {
             return;
         }
+        _refreshInProgress = true;
+        try
+        {
+            await RefreshCoreAsync();
+        }
+        finally
+        {
+            _refreshInProgress = false;
+        }
+    }
+
+    private async Task RefreshCoreAsync()
+    {
+        var status = await _client.GetStatusAsync();
+        if (status is null)
+        {
+            // Distinct from a business-logic error (a failed save, a wrong password) - this means the
+            // background service itself couldn't be reached at all, which the user has no other way to
+            // notice short of trying an action and having it silently do nothing.
+            ConnectionStatusText.Text = "● Service unreachable";
+            ConnectionStatusText.Foreground = System.Windows.Media.Brushes.Firebrick;
+            return;
+        }
+
+        ConnectionStatusText.Text = "● Connected";
+        ConnectionStatusText.Foreground = System.Windows.Media.Brushes.SeaGreen;
 
         var selectedId = (RulesGrid.SelectedItem as RuleRow)?.Id;
 
@@ -84,7 +115,7 @@ public partial class SettingsWindow : Window
         return (status?.Rules ?? []).Select(r => new RuleUpsertDto(r.Id, r.TargetType, r.Target, r.DailyBudgetMinutes, r.Enabled)).ToList();
     }
 
-    private async void AddButton_Click(object sender, RoutedEventArgs e)
+    private void AddButton_Click(object sender, RoutedEventArgs e) => UiSafe.Run(async () =>
     {
         var dialog = new RuleEditDialog { Owner = this };
         if (dialog.ShowDialog() != true || dialog.Result is null)
@@ -95,9 +126,9 @@ public partial class SettingsWindow : Window
         var current = (await BuildCurrentUpsertListAsync()).ToList();
         current.Add(dialog.Result);
         await SaveRulesAsync(current);
-    }
+    });
 
-    private async void EditButton_Click(object sender, RoutedEventArgs e)
+    private void EditButton_Click(object sender, RoutedEventArgs e) => UiSafe.Run(async () =>
     {
         if (RulesGrid.SelectedItem is not RuleRow selected)
         {
@@ -121,9 +152,9 @@ public partial class SettingsWindow : Window
             current[index] = dialog.Result;
         }
         await SaveRulesAsync(current);
-    }
+    });
 
-    private async void DeleteButton_Click(object sender, RoutedEventArgs e)
+    private void DeleteButton_Click(object sender, RoutedEventArgs e) => UiSafe.Run(async () =>
     {
         if (RulesGrid.SelectedItem is not RuleRow selected)
         {
@@ -140,7 +171,7 @@ public partial class SettingsWindow : Window
 
         var current = (await BuildCurrentUpsertListAsync()).Where(r => r.Id != selected.Id).ToList();
         await SaveRulesAsync(current);
-    }
+    });
 
     private async Task SaveRulesAsync(IReadOnlyList<RuleUpsertDto> rules)
     {
@@ -149,24 +180,24 @@ public partial class SettingsWindow : Window
         {
             System.Windows.MessageBox.Show(error ?? "Failed to save changes.", "LimitIO", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
-        await RefreshAsync();
+        await RefreshCoreAsync();
     }
 
-    private async void Pause15Button_Click(object sender, RoutedEventArgs e) => await PauseAsync(15);
+    private void Pause15Button_Click(object sender, RoutedEventArgs e) => UiSafe.Run(() => PauseAsync(15));
 
-    private async void Pause60Button_Click(object sender, RoutedEventArgs e) => await PauseAsync(60);
+    private void Pause60Button_Click(object sender, RoutedEventArgs e) => UiSafe.Run(() => PauseAsync(60));
 
     private async Task PauseAsync(int minutes)
     {
         await _client.PauseMonitoringAsync(minutes, _sessionToken);
-        await RefreshAsync();
+        await RefreshCoreAsync();
     }
 
-    private async void ResumeButton_Click(object sender, RoutedEventArgs e)
+    private void ResumeButton_Click(object sender, RoutedEventArgs e) => UiSafe.Run(async () =>
     {
         await _client.ResumeMonitoringAsync(_sessionToken);
-        await RefreshAsync();
-    }
+        await RefreshCoreAsync();
+    });
 
     private void ChangePasswordButton_Click(object sender, RoutedEventArgs e)
     {
