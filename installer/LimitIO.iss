@@ -13,11 +13,14 @@
   #define AppVersion "0.0.0-dev"
 #endif
 
-#define AppId "{B4B6E1F0-6C1A-4F7E-9C8B-2B7C2C5B9A11}"
 #define RepoRoot ".."
 
 [Setup]
-AppId={#AppId}
+; Inno Setup's own script language uses {...} for constant substitution (e.g. {app}, {group}), so a
+; literal opening brace must be doubled to "{{" or it's parsed as a constant lookup (the closing "}"
+; needs no escaping - only "{" triggers constant-parsing). This is the standard escaped form for a
+; literal GUID, matching what Inno Setup's own project wizard generates.
+AppId={{B4B6E1F0-6C1A-4F7E-9C8B-2B7C2C5B9A11}
 AppName=LimitIO
 AppVersion={#AppVersion}
 AppPublisher=LimitIO Project
