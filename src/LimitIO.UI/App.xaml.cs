@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Windows;
 using LimitIO.UI.Ipc;
 using LimitIO.UI.Tray;
