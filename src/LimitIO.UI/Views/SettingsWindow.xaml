@@ -1,0 +1,44 @@
+<Window x:Class="LimitIO.UI.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="LimitIO Settings"
+        Height="480" Width="640"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Limits" FontSize="16" FontWeight="Bold" Margin="0,0,0,8" />
+
+        <DataGrid x:Name="RulesGrid" Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True"
+                  SelectionMode="Single" CanUserAddRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Type" Binding="{Binding TargetType}" Width="110" />
+                <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="*" />
+                <DataGridTextColumn Header="Daily budget" Binding="{Binding DailyBudgetMinutes, StringFormat={}{0} min}" Width="100" />
+                <DataGridTextColumn Header="Used today" Binding="{Binding ConsumedMinutes, StringFormat={}{0} min}" Width="100" />
+                <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled}" Width="70" />
+                <DataGridTextColumn Header="Status" Binding="{Binding StatusText}" Width="90" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,10,0,0">
+            <Button Content="Add..." Width="80" Margin="0,0,8,0" Click="AddButton_Click" />
+            <Button Content="Edit..." Width="80" Margin="0,0,8,0" Click="EditButton_Click" />
+            <Button Content="Delete" Width="80" Margin="0,0,20,0" Click="DeleteButton_Click" />
+            <Button Content="Pause 15 min" Width="100" Margin="0,0,8,0" Click="Pause15Button_Click" />
+            <Button Content="Pause 60 min" Width="100" Margin="0,0,8,0" Click="Pause60Button_Click" />
+            <Button x:Name="ResumeButton" Content="Resume now" Width="100" Click="ResumeButton_Click" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <TextBlock x:Name="PauseStatusText" VerticalAlignment="Center" Margin="0,0,16,0" Foreground="DarkOrange" />
+            <Button Content="Change Password..." Width="150" Margin="0,0,8,0" Click="ChangePasswordButton_Click" />
+            <Button Content="Close" Width="80" Click="CloseButton_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

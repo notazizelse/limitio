@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-LimitIO.Service-cffee694-aa14-4336-b8b0-13f5c5cf4515</UserSecretsId>
+    <AssemblyName>LimitIO.Service</AssemblyName>
+    <RootNamespace>LimitIO.Service</RootNamespace>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="8.0.1" />
+    <PackageReference Include="WinDivertSharp" Version="1.4.2" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LimitIO.Core\LimitIO.Core.csproj" />
+  </ItemGroup>
+
+  <!--
+    WinDivertSharp ships the native WinDivert.dll / WinDivert64.sys under build/x64 but has no
+    auto-import .targets file, so they must be copied to the output directory explicitly. These
+    are what let the service actually open a packet-capture handle at runtime; without them
+    alongside the exe, WinDivertOpen fails at startup.
+  -->
+  <ItemGroup>
+    <None Include="$(NuGetPackageRoot)windivertsharp\1.4.2\build\x64\WinDivert.dll">
+      <Link>WinDivert.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="$(NuGetPackageRoot)windivertsharp\1.4.2\build\x64\WinDivert64.sys">
+      <Link>WinDivert64.sys</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>

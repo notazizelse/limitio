@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Determine version from tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag.TrimStart('v')
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Restore
+        run: dotnet restore LimitIO.sln
+
+      - name: Run tests before publishing
+        run: dotnet test LimitIO.sln --configuration Release
+
+      - name: Publish Service (self-contained, single-file, win-x64)
+        run: >
+          dotnet publish src/LimitIO.Service/LimitIO.Service.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:Version=${{ steps.version.outputs.version }}
+          -o artifacts/service
+
+      - name: Publish UI (self-contained, single-file, win-x64)
+        run: >
+          dotnet publish src/LimitIO.UI/LimitIO.UI.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:Version=${{ steps.version.outputs.version }}
+          -o artifacts/ui
+
+      - name: Publish Installer.Helper (self-contained, single-file, win-x64)
+        run: >
+          dotnet publish src/LimitIO.Installer.Helper/LimitIO.Installer.Helper.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:Version=${{ steps.version.outputs.version }}
+          -o artifacts/helper
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Compile installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\LimitIO.iss "/DAppVersion=${{ steps.version.outputs.version }}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: installer/Output/LimitIO-Setup-*.exe
+          generate_release_notes: true
+          fail_on_unmatched_files: true

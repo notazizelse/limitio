@@ -1,0 +1,30 @@
+## .NET
+bin/
+obj/
+*.user
+*.userosscache
+*.suo
+
+## Build output
+publish/
+artifacts/
+
+## Rider / VS
+.vs/
+.idea/
+*.sln.docstates
+
+## Test results
+TestResults/
+*.trx
+
+## Installer build output
+installer/Output/
+*.iss.bak
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Logs
+*.log

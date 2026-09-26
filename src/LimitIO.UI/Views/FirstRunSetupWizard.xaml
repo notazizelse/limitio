@@ -1,0 +1,41 @@
+<Window x:Class="LimitIO.UI.Views.FirstRunSetupWizard"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Welcome to LimitIO"
+        Height="420" Width="460"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Set a management password" FontSize="18" FontWeight="Bold" Margin="0,0,0,8" />
+        <TextBlock Grid.Row="1" TextWrapping="Wrap" Margin="0,0,0,16"
+                   Text="This password is separate from your Windows password. Anyone who wants to change limits, pause monitoring, or use up the daily one-minute grace beyond what's already available will need it. The person using this computer does not need it just to browse normally." />
+
+        <TextBlock Grid.Row="2" Text="Password:" Margin="0,0,0,4" />
+        <PasswordBox x:Name="PasswordBox" Grid.Row="3" Height="28" VerticalContentAlignment="Center" Margin="0,0,0,10" />
+
+        <TextBlock Grid.Row="4" Text="Confirm password:" Margin="0,0,0,4" />
+        <PasswordBox x:Name="ConfirmBox" Grid.Row="5" Height="28" VerticalContentAlignment="Center" Margin="0,0,0,10" />
+
+        <TextBlock x:Name="ErrorText" Grid.Row="6" Foreground="Red" TextWrapping="Wrap" Margin="0,4,0,0"
+                   Visibility="Collapsed" />
+
+        <TextBlock Grid.Row="7" TextWrapping="Wrap" Foreground="Gray" VerticalAlignment="Bottom"
+                   Text="Honest note: this stops casual tampering (Task Manager, deleting files, editing settings) by a standard user, but it cannot stop someone signed in with an administrator account from disabling protection through Windows' own admin tools. For the strongest setup, give the person being limited a standard (non-admin) account and keep the admin account and this password to yourself. See the README for details." />
+
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button x:Name="ContinueButton" Content="Set Password and Continue" Width="220" Click="ContinueButton_Click" IsDefault="True" />
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,42 @@
+<Window x:Class="LimitIO.UI.Views.RuleEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Edit Limit"
+        Height="280" Width="380"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="What are you limiting?" Margin="0,0,0,4" />
+        <ComboBox x:Name="TargetTypeCombo" Grid.Row="1" Margin="0,0,0,12" SelectedIndex="0">
+            <ComboBoxItem Content="A website (by domain)" Tag="Domain" />
+            <ComboBoxItem Content="An application (by process name)" Tag="ProcessName" />
+        </ComboBox>
+
+        <TextBlock x:Name="TargetLabel" Grid.Row="2" Text="Domain (e.g. instagram.com):" Margin="0,0,0,4" />
+        <TextBox x:Name="TargetBox" Grid.Row="3" Height="26" VerticalContentAlignment="Center" Margin="0,0,0,12" />
+
+        <TextBlock Grid.Row="4" Text="Daily time budget, in minutes:" Margin="0,0,0,4" />
+        <TextBox x:Name="BudgetBox" Grid.Row="5" Height="26" VerticalContentAlignment="Center" Margin="0,0,0,12" />
+
+        <CheckBox x:Name="EnabledCheck" Grid.Row="6" Content="Enabled" IsChecked="True" Margin="0,0,0,8" />
+
+        <TextBlock x:Name="ErrorText" Grid.Row="7" Foreground="Red" TextWrapping="Wrap" VerticalAlignment="Top" Visibility="Collapsed" />
+
+        <StackPanel Grid.Row="8" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,10,0,0">
+            <Button Content="Cancel" Width="80" Margin="0,0,10,0" Click="CancelButton_Click" IsCancel="True" />
+            <Button Content="Save" Width="80" Click="SaveButton_Click" IsDefault="True" />
+        </StackPanel>
+    </Grid>
+</Window>

@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    # WPF/WinForms projects (LimitIO.UI) need the full Windows Desktop SDK to build, and the Windows
+    # Service project uses Windows-only APIs (System.ServiceProcess, IP Helper P/Invokes) - both require
+    # an actual Windows runner, not just a net8.0-windows target, since a Linux runner has no Windows
+    # Desktop SDK targets to build against at all.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore LimitIO.sln
+
+      - name: Build
+        run: dotnet build LimitIO.sln --configuration Release --no-restore
+
+      # Only Core.Tests and Service.Tests are meaningful here: they exercise the pure logic (rule
+      # matching, password hashing, SNI/HTTP parsing, IPC request handling, grace/enforcement logic)
+      # without ever opening a real WinDivert capture handle. True end-to-end packet capture needs a
+      # real network stack and elevated service install, and is verified manually on a dev VM - see
+      # docs/ARCHITECTURE.md's milestone list.
+      - name: Test
+        run: dotnet test LimitIO.sln --configuration Release --no-build --verbosity normal
